@@ -1,0 +1,47 @@
+Game Feature:
+**- Đặt nội thất:** 
+
+		**THÊM BỘ LỌC**
+
+ 		+ Phong cách: 	_ CỔ ĐIỂN Nhiều hoa văn cầu kỳ, chất liệu gỗ tối màu, nhung, mạ vàng. Tạo cảm giác sang trọng, quyền quý
+ 				_ HIỆN ĐẠI Đường nét thẳng, gọn gàng, màu sắc trung tính (trắng, đen, xám). Ít chi tiết thừa.
+ 				_ MỘC MẠC (HƠI HƯỚNG Á ĐÔNG) Sử dụng nhiều gỗ tự nhiên, tông màu ấm, vải thô, mang lại cảm giác gần gũi, thư giãn.
+ 				_ CÔNG NGHIỆP Sử dụng kim loại, gạch trần, bê tông và tông màu tối. Mạnh mẽ và cá tính.
+ 				_ TƯƠNG LAI Đèn neon, vật liệu nhựa cao cấp, kim loại sáng bóng và các hình khối phi truyền thống.
+
+**- PHÂN LOẠI THEO NỘI THẤT:**
+
+	**A. Nhóm Đồ dùng lớn (Large Furniture)**
+
+ 		Đồ để ngồi: Ghế sofa, ghế đơn, ghế làm việc, ghế dài (Ottoman).
+ 		Đồ để nằm: Giường đơn, giường đôi, giường tầng, nôi em bé.
+ 		Bàn: Bàn trà, bàn làm việc, bàn ăn, bàn trang điểm.
+ 		Lưu trữ: Tủ quần áo, kệ sách, tủ trưng bày, kệ tivi.
+**B. Nhóm Trang trí bề mặt (Surface \& Wall)**
+
+ 		Tường: Giấy dán tường, sơn, tranh treo tường, gương, đồng hồ treo tường.
+ 		Sàn: Thảm (thảm lông, thảm họa tiết), sàn gỗ, gạch lát.
+ 		Cửa: Cửa chính phòng, cửa sổ, rèm cửa.
+**C. Nhóm Ánh sáng (Lighting)**
+
+ 		Trần: Đèn chùm, đèn ốp trần.
+ 		Tường: Đèn gắn tường.
+ 		Sàn & Bàn: Đèn cây (Floor lamp), đèn để bàn.
+**D. Nhóm Đồ trang trí nhỏ (Decor/Clutter)**
+
+ 		Cây xanh: Chậu cây lớn góc phòng, cây nhỏ để bàn, lọ hoa.
+ 		Điện tử: Tivi, dàn âm thanh, máy tính, máy chơi game.
+ 		Đồ vụn (Tạo độ thật): Sách, nến, gối tựa, cốc chén, đồ chơi.
+
+
+
+CHỨC NĂNG KHÁC:
+
+EXIT
+PICTURE
+BLUEPRINT MODE:
+DELETE
+DRAW WALL
+DRAW WINDOW
+DRAW DOOR
+EXIT
