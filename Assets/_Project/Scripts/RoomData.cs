@@ -9,13 +9,18 @@ using UnityEngine;
 public class RoomData
 {
     /// <summary>
+    /// Height of the room's walls.
+    /// </summary>
+    public float RoomHeight { get; private set; }
+
+    /// <summary>
     /// List of corner positions in world space (XZ plane, Y is typically 0).
     /// Points should be ordered in a counter-clockwise direction.
     /// </summary>
     public List<Vector3> Corners { get; private set; }
 
     /// <summary>
-    /// Event fired whenever the room geometry changes (corners added/removed/moved).
+    /// Event fired whenever the room geometry changes (corners added/removed/moved) or height changes.
     /// </summary>
     public event Action OnGeometryChanged;
 
@@ -24,10 +29,12 @@ public class RoomData
     /// </summary>
     /// <param name="width">Width of the initial room</param>
     /// <param name="length">Length of the initial room</param>
+    /// <param name="height">Height of the room (wall height)</param>
     /// <param name="centerPosition">Center position of the room</param>
-    public RoomData(float width = 5f, float length = 5f, Vector3 centerPosition = default)
+    public RoomData(float width = 5f, float length = 5f, float height = 3f, Vector3 centerPosition = default)
     {
         Corners = new List<Vector3>();
+        RoomHeight = height;
         InitializeRectangularRoom(width, length, centerPosition);
     }
 
@@ -149,6 +156,17 @@ public class RoomData
             Corners[index] = oldPosition;
             return false;
         }
+    }
+
+    /// <summary>
+    /// Updates the room height and triggers regeneration.
+    /// </summary>
+    public void SetRoomHeight(float newHeight)
+    {
+        if (Mathf.Approximately(RoomHeight, newHeight)) return;
+
+        RoomHeight = newHeight;
+        OnGeometryChanged?.Invoke();
     }
 
     /// <summary>

@@ -481,8 +481,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf7056f4c85a31544aca7a48fd4f95e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AutoHideWall
-  side: 3
+  worldNormal: {x: 0, y: 0, z: 1}
   rendererOverride: {fileID: 0}
+  forceHidden: 0
 --- !u!1 &270339657
 GameObject:
   m_ObjectHideFlags: 0
@@ -563,6 +564,7 @@ MonoBehaviour:
   - {fileID: 1899615528}
   - {fileID: 1970010894}
   debugDraw: 0
+  hideDotThreshold: 0.15
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -993,25 +995,36 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
   target: {fileID: 1214660540}
-  distance: 50
-  minDistance: 10
-  maxDistance: 70
-  startYaw: 75
-  startPitch: 25
+  floorRenderer: {fileID: 83773991}
+  lookHeight: 1.2
+  yawSpeed: 110
+  pitchSpeed: 90
   minPitch: 25
   maxPitch: 75
-  mouseRotateSpeed: 500
+  enableRmbOrbit: 1
+  mouseSensitivity: 3
   zoomSpeed: 10
-  zoomSmooth: 10
-  panSpeed: 8
-  panSmooth: 15
-  floorRenderer: {fileID: 83773991}
-  clampMargin: 1
-  verticalMoveSpeed: 4
-  minHeightOffsetY: -2
-  maxHeightOffsetY: 4
-  heightOffset: 0.3
-  rotateMouseButton: 1
+  minDistance: 10
+  maxDistance: 70
+  zoomSmoothTime: 0.08
+  outsidePadding: 0.8
+  wallThicknessPadding: 0.1
+  smoothRotation: 1
+  rotationSmoothTime: 0.06
+  positionSmoothTime: 0.06
+  blockWhenPointerOverUI: 1
+  blockWhenPlacing: 1
+  furniturePlacer: {fileID: 0}
+  wallEditor: {fileID: 0}
+  collisionMask:
+    serializedVersion: 2
+    m_Bits: 0
+  collisionRadius: 0.25
+  collisionPadding: 0.2
+  autoSnapOnStart: 1
+  defaultYaw: 45
+  defaultPitch: 35
+  spawnDistanceFactor: 1.8
 --- !u!114 &887746902
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1353,6 +1366,14 @@ MonoBehaviour:
   floorMask:
     serializedVersion: 2
     m_Bits: 512
+  wallMask:
+    serializedVersion: 2
+    m_Bits: 0
+  gridSize: 1
+  rotateKey: 114
+  rotateStep: 90
+  cancelKey: 27
+  hoverInteractor: {fileID: 0}
 --- !u!4 &1495906012
 Transform:
   m_ObjectHideFlags: 0
@@ -1492,8 +1513,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf7056f4c85a31544aca7a48fd4f95e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AutoHideWall
-  side: 1
+  worldNormal: {x: 0, y: 0, z: 1}
   rendererOverride: {fileID: 0}
+  forceHidden: 0
 --- !u!1 &1691379117
 GameObject:
   m_ObjectHideFlags: 0
@@ -1693,8 +1715,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf7056f4c85a31544aca7a48fd4f95e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AutoHideWall
-  side: 0
+  worldNormal: {x: 0, y: 0, z: 1}
   rendererOverride: {fileID: 0}
+  forceHidden: 0
 --- !u!1 &1970010889
 GameObject:
   m_ObjectHideFlags: 0
@@ -1819,8 +1842,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf7056f4c85a31544aca7a48fd4f95e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AutoHideWall
-  side: 2
+  worldNormal: {x: 0, y: 0, z: 1}
   rendererOverride: {fileID: 0}
+  forceHidden: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -47,8 +47,6 @@ public class CameraController : MonoBehaviour
 
     [Header("Input blocking")]
     public bool blockWhenPointerOverUI = true;
-    public bool blockWhenPlacing = true;
-    public FurniturePlacer furniturePlacer; // optional
 
     [Header("Wall Editor Integration")]
     [Tooltip("Tham chiếu WallEditor để đăng ký callback khi tường thay đổi")]
@@ -186,9 +184,6 @@ public class CameraController : MonoBehaviour
     private bool ShouldBlockInput()
     {
         if (blockWhenPointerOverUI && EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-            return true;
-
-        if (blockWhenPlacing && furniturePlacer != null && furniturePlacer.IsPlacing)
             return true;
 
         return false;
