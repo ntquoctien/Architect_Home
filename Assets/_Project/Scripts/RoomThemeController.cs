@@ -30,6 +30,11 @@ public class RoomThemeController : MonoBehaviour
     private Material _floorMatInstance;
     private Material _wallMatInstance;
 
+    // True once the procedural system has pushed runtime renderer references.
+    // When true, AutoFindIfNeeded is bypassed so it can't overwrite runtime renderers
+    // with a stale scene-hierarchy search.
+    private bool _proceduralRenderersBound = false;
+
     void Awake()
     {
         AutoFindIfNeeded();
@@ -44,13 +49,29 @@ public class RoomThemeController : MonoBehaviour
     }
 #endif
 
+    /// <summary>
+    /// Called by RoomEditorController after every geometry rebuild.
+    /// Binds the runtime-generated procedural renderers and applies the current theme.
+    /// This is the ONLY correct way to refresh RoomThemeController in the procedural system.
+    /// </summary>
+    public void SetProceduralRenderers(Renderer floor, Renderer[] walls)
+    {
+        floorRenderer = floor;
+        wallRenderers = walls;
+        _proceduralRenderersBound = true;
+        ApplyTheme();
+    }
+
     [ContextMenu("Apply Theme")]
     public void ApplyTheme()
     {
-        AutoFindIfNeeded();
+        // Only run the static hierarchy search when renderers haven't been
+        // set procedurally — prevents scene-name scan from overwriting runtime renderers.
+        if (!_proceduralRenderersBound)
+            AutoFindIfNeeded();
 
         Material floorMatToUse = PrepareMaterial(ref _floorMatInstance, floorMaterial);
-        Material wallMatToUse = PrepareMaterial(ref _wallMatInstance, wallMaterial);
+        Material wallMatToUse  = PrepareMaterial(ref _wallMatInstance, wallMaterial);
 
         ApplyToRenderer(floorRenderer, floorMatToUse, floorColor);
 
@@ -131,9 +152,10 @@ public class RoomThemeController : MonoBehaviour
     public void SetFloorColor(Color c) { floorColor = c; ApplyTheme(); }
     public void SetWallColor(Color c) { wallColor = c; ApplyTheme(); }
 
-    // Force refresh walls list (khi bạn thêm/xoá wall runtime)
+    // Force refresh walls list (static hierarchy mode only)
     public void RefreshWalls()
     {
+        _proceduralRenderersBound = false;
         wallRenderers = null;
         AutoFindIfNeeded();
         ApplyTheme();

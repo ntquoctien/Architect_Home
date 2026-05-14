@@ -16,6 +16,11 @@ public class NodeHandle : MonoBehaviour
     }
 
     public event Action OnNodeDeleted;
+    /// <summary>
+    /// Fired when the player right-clicks this NodeHandle (= wall corner vertex).
+    /// RoomEditorController subscribes to open the RadialToolMenu.
+    /// </summary>
+    public event Action<int> OnNodeRightClicked;
 
     private int nodeIndex;
     private NodeState currentState = NodeState.Normal;
@@ -37,12 +42,18 @@ public class NodeHandle : MonoBehaviour
         hoverColor = hover;
         selectedColor = selected;
 
+        // Ensure there is a SphereCollider for WallInteraction raycasting
+        if (GetComponent<SphereCollider>() == null)
+        {
+            var sc = gameObject.AddComponent<SphereCollider>();
+            sc.radius = 0.15f;
+        }
+
         nodeRenderer = GetComponent<Renderer>();
         if (nodeRenderer == null)
             nodeRenderer = GetComponentInChildren<Renderer>();
 
         propertyBlock = new MaterialPropertyBlock();
-        
         SetState(NodeState.Normal);
     }
 
@@ -102,10 +113,10 @@ public class NodeHandle : MonoBehaviour
 
     private void OnMouseOver()
     {
-        // Right-click to delete node
         if (Input.GetMouseButtonDown(1))
         {
-            OnNodeDeleted?.Invoke();
+            // Right-click: open RadialToolMenu (not immediate delete)
+            OnNodeRightClicked?.Invoke(nodeIndex);
         }
     }
 

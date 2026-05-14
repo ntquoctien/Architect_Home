@@ -25,6 +25,12 @@ public class RoomData
     public event Action OnGeometryChanged;
 
     /// <summary>
+    /// Index of the corner that last changed. -1 means a structural change (add/remove) requiring full rebuild.
+    /// RoomMeshGenerator reads this to decide between selective and full mesh updates.
+    /// </summary>
+    public int LastChangedCornerIndex { get; private set; } = -1;
+
+    /// <summary>
     /// Constructor initializes with a default rectangular room.
     /// </summary>
     /// <param name="width">Width of the initial room</param>
@@ -63,6 +69,7 @@ public class RoomData
         
         if (ValidatePolygon())
         {
+            LastChangedCornerIndex = -1;
             OnGeometryChanged?.Invoke();
         }
         else
@@ -88,6 +95,7 @@ public class RoomData
         
         if (ValidatePolygon())
         {
+            LastChangedCornerIndex = -1;
             OnGeometryChanged?.Invoke();
         }
         else
@@ -120,6 +128,7 @@ public class RoomData
         
         if (ValidatePolygon())
         {
+            LastChangedCornerIndex = -1;
             OnGeometryChanged?.Invoke();
             return true;
         }
@@ -148,6 +157,7 @@ public class RoomData
         
         if (ValidatePolygon())
         {
+            LastChangedCornerIndex = index;
             OnGeometryChanged?.Invoke();
             return true;
         }
@@ -260,5 +270,28 @@ public class RoomData
             area -= Corners[j].x * Corners[i].z;
         }
         return Mathf.Abs(area) * 0.5f;
+    }
+
+    /// <summary>
+    /// Tests whether a world-space point lies inside the room polygon using a
+    /// 2D ray-casting algorithm on the XZ plane.
+    /// </summary>
+    public bool IsPointInsideRoom(Vector3 worldPoint)
+    {
+        float px = worldPoint.x;
+        float pz = worldPoint.z;
+        bool inside = false;
+        int n = Corners.Count;
+
+        for (int i = 0, j = n - 1; i < n; j = i++)
+        {
+            float xi = Corners[i].x, zi = Corners[i].z;
+            float xj = Corners[j].x, zj = Corners[j].z;
+
+            bool intersects = ((zi > pz) != (zj > pz)) &&
+                              (px < (xj - xi) * (pz - zi) / (zj - zi) + xi);
+            if (intersects) inside = !inside;
+        }
+        return inside;
     }
 }

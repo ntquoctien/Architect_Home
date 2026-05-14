@@ -14,10 +14,10 @@ TagManager:
   - 
   - 
   - IconCapture
-  - Floor
-  - Furniture
-  - Ceiling
-  - Wall
+  - NodeHandle
+  - RoomWall
+  - Ground
+  - 
   - 
   - 
   - 
