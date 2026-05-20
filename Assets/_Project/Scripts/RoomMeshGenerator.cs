@@ -153,21 +153,22 @@ public class RoomMeshGenerator : MonoBehaviour
         wallMeshFilters   = new MeshFilter[MaxWalls];
         wallMeshRenderers = new MeshRenderer[MaxWalls];
         wallBoxColliders  = new BoxCollider[MaxWalls];
+    }
 
-        for (int i = 0; i < MaxWalls; i++)
-        {
-            var go = new GameObject($"Wall_{i}");
-            go.transform.SetParent(transform);
-            go.transform.localPosition = Vector3.zero;
-            go.SetActive(false);
+    private void EnsureWallObject(int index)
+    {
+        if (wallObjects[index] != null) return;
 
-            wallObjects[i]       = go;
-            wallMeshFilters[i]   = go.AddComponent<MeshFilter>();
-            wallMeshRenderers[i] = go.AddComponent<MeshRenderer>();
-            wallBoxColliders[i]  = go.AddComponent<BoxCollider>();
+        var go = new GameObject($"Wall_{index}");
+        go.transform.SetParent(transform);
+        go.transform.localPosition = Vector3.zero;
 
-            AssignMaterial(wallMeshRenderers[i], defaultWallMat, "Default_Wall_Mat", Color.white);
-        }
+        wallObjects[index]       = go;
+        wallMeshFilters[index]   = go.AddComponent<MeshFilter>();
+        wallMeshRenderers[index] = go.AddComponent<MeshRenderer>();
+        wallBoxColliders[index]  = go.AddComponent<BoxCollider>();
+
+        AssignMaterial(wallMeshRenderers[index], defaultWallMat, "Default_Wall_Mat", Color.white);
     }
 
     private void AssignMaterial(MeshRenderer target, Material preferred, string fallbackName, Color fallbackColor)
@@ -193,12 +194,14 @@ public class RoomMeshGenerator : MonoBehaviour
         {
             if (i < n)
             {
+                EnsureWallObject(i);
                 wallObjects[i].SetActive(true);
                 RebuildWall(i);
             }
             else
             {
-                wallObjects[i].SetActive(false);
+                if (wallObjects[i] != null)
+                    wallObjects[i].SetActive(false);
             }
         }
     }
@@ -231,6 +234,7 @@ public class RoomMeshGenerator : MonoBehaviour
     private void RebuildWall(int edgeIndex)
     {
         if (edgeIndex < 0 || edgeIndex >= roomData.Corners.Count) return;
+        EnsureWallObject(edgeIndex);
 
         var corners = roomData.Corners;
         int n       = corners.Count;
@@ -247,25 +251,36 @@ public class RoomMeshGenerator : MonoBehaviour
         Vector3 inward = new Vector3(-dir.z, 0f, dir.x);
         float height   = roomData.RoomHeight;
 
-        Vector3 Ls(Vector3 w) => transform.InverseTransformPoint(w);
+        Vector3 wallCenter = (worldStart + worldEnd) * 0.5f
+                           + inward * (WallThickness * 0.5f)
+                           + Vector3.up * (height * 0.5f);
 
-        // 12 vertices: outer face | inner face | top cap
+        Transform wallTransform = wallObjects[edgeIndex].transform;
+        wallTransform.position = wallCenter;
+        wallTransform.rotation = Quaternion.LookRotation(dir, Vector3.up);
+        wallTransform.localScale = Vector3.one;
+
+        // 12 vertices: outer face | inner face | top cap.
+        // Local axes: X = thickness, Y = height, Z = edge length.
+        float halfThickness = WallThickness * 0.5f;
+        float halfHeight = height * 0.5f;
+        float halfLength = edgeLength * 0.5f;
         var verts = new Vector3[]
         {
-            Ls(worldStart),                                                   // 0 outer bot L
-            Ls(worldEnd),                                                     // 1 outer bot R
-            Ls(worldStart + Vector3.up * height),                             // 2 outer top L
-            Ls(worldEnd   + Vector3.up * height),                             // 3 outer top R
+            new Vector3( halfThickness, -halfHeight, -halfLength), // 0 outer bot L
+            new Vector3( halfThickness, -halfHeight,  halfLength), // 1 outer bot R
+            new Vector3( halfThickness,  halfHeight, -halfLength), // 2 outer top L
+            new Vector3( halfThickness,  halfHeight,  halfLength), // 3 outer top R
 
-            Ls(worldEnd   + inward * WallThickness),                          // 4 inner bot R
-            Ls(worldStart + inward * WallThickness),                          // 5 inner bot L
-            Ls(worldEnd   + inward * WallThickness + Vector3.up * height),    // 6 inner top R
-            Ls(worldStart + inward * WallThickness + Vector3.up * height),    // 7 inner top L
+            new Vector3(-halfThickness, -halfHeight,  halfLength), // 4 inner bot R
+            new Vector3(-halfThickness, -halfHeight, -halfLength), // 5 inner bot L
+            new Vector3(-halfThickness,  halfHeight,  halfLength), // 6 inner top R
+            new Vector3(-halfThickness,  halfHeight, -halfLength), // 7 inner top L
 
-            Ls(worldStart + Vector3.up * height),                             // 8 top cap outer L (= 2)
-            Ls(worldEnd   + Vector3.up * height),                             // 9 top cap outer R (= 3)
-            Ls(worldStart + inward * WallThickness + Vector3.up * height),    // 10 top cap inner L (= 7)
-            Ls(worldEnd   + inward * WallThickness + Vector3.up * height),    // 11 top cap inner R (= 6)
+            new Vector3( halfThickness,  halfHeight, -halfLength), // 8 top cap outer L (= 2)
+            new Vector3( halfThickness,  halfHeight,  halfLength), // 9 top cap outer R (= 3)
+            new Vector3(-halfThickness,  halfHeight, -halfLength), // 10 top cap inner L (= 7)
+            new Vector3(-halfThickness,  halfHeight,  halfLength), // 11 top cap inner R (= 6)
         };
 
         float wU = edgeLength / uvScale;
@@ -296,13 +311,8 @@ public class RoomMeshGenerator : MonoBehaviour
         wallMeshFilters[edgeIndex].sharedMesh = mesh;
 
         // ── BoxCollider: orient the wall GO to face the edge, then size it ──
-        Vector3 wallCenter = (worldStart + worldEnd) * 0.5f
-                           + inward * (WallThickness * 0.5f)
-                           + Vector3.up * (height * 0.5f);
-        wallObjects[edgeIndex].transform.position = wallCenter;
-        wallObjects[edgeIndex].transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
         wallBoxColliders[edgeIndex].center = Vector3.zero;
-        wallBoxColliders[edgeIndex].size   = new Vector3(edgeLength, height, WallThickness);
+        wallBoxColliders[edgeIndex].size   = new Vector3(WallThickness, height, edgeLength);
     }
 
     // ─────────────────────────────────────────────
@@ -311,12 +321,13 @@ public class RoomMeshGenerator : MonoBehaviour
 
     private int[] TriangulatePolygon(List<Vector3> corners)
     {
-        var tris    = new List<int>();
+        var tris = new List<int>();
         var indices = new List<int>();
         for (int i = 0; i < corners.Count; i++) indices.Add(i);
 
-        int safety = corners.Count * 3;
-        int iter   = 0;
+        bool isClockwise = SignedAreaXZ(corners) < 0f;
+        int safety = corners.Count * corners.Count;
+        int iter = 0;
         while (indices.Count > 3 && iter++ < safety)
         {
             bool found = false;
@@ -325,9 +336,9 @@ public class RoomMeshGenerator : MonoBehaviour
                 int pi = indices[(i - 1 + indices.Count) % indices.Count];
                 int ci = indices[i];
                 int ni = indices[(i + 1) % indices.Count];
-                if (IsEar(corners[pi], corners[ci], corners[ni], corners, indices))
+                if (IsEar(pi, ci, ni, corners, indices, isClockwise))
                 {
-                    tris.Add(pi); tris.Add(ci); tris.Add(ni);
+                    AddUpwardTriangle(tris, pi, ci, ni);
                     indices.RemoveAt(i);
                     found = true;
                     break;
@@ -335,22 +346,50 @@ public class RoomMeshGenerator : MonoBehaviour
             }
             if (!found) { Debug.LogWarning("[RoomMeshGenerator] Ear clipping stalled."); break; }
         }
-        if (indices.Count == 3) { tris.Add(indices[0]); tris.Add(indices[1]); tris.Add(indices[2]); }
+        if (indices.Count == 3)
+            AddUpwardTriangle(tris, indices[0], indices[1], indices[2]);
         return tris.ToArray();
     }
 
-    private bool IsEar(Vector3 prev, Vector3 curr, Vector3 next, List<Vector3> all, List<int> rem)
+    private float SignedAreaXZ(List<Vector3> points)
     {
-        // Cross-product check: CCW ear has positive cross product
-        float cross = (prev.x - curr.x) * (next.z - curr.z) - (prev.z - curr.z) * (next.x - curr.x);
-        if (cross <= 0f) return false;
+        float area = 0f;
+        for (int i = 0; i < points.Count; i++)
+        {
+            Vector3 a = points[i];
+            Vector3 b = points[(i + 1) % points.Count];
+            area += a.x * b.z - b.x * a.z;
+        }
+        return area * 0.5f;
+    }
+
+    private bool IsEar(int prevIndex, int currIndex, int nextIndex, List<Vector3> all, List<int> rem, bool polygonClockwise)
+    {
+        Vector3 prev = all[prevIndex];
+        Vector3 curr = all[currIndex];
+        Vector3 next = all[nextIndex];
+        float cross = CrossXZ(prev, curr, next);
+        if (polygonClockwise ? cross >= -0.0001f : cross <= 0.0001f) return false;
+
         foreach (int idx in rem)
         {
+            if (idx == prevIndex || idx == currIndex || idx == nextIndex) continue;
             Vector3 p = all[idx];
-            if (p == prev || p == curr || p == next) continue;
             if (PointInTriangle(p, prev, curr, next)) return false;
         }
         return true;
+    }
+
+    private float CrossXZ(Vector3 a, Vector3 b, Vector3 c)
+    {
+        return (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
+    }
+
+    private void AddUpwardTriangle(List<int> tris, int a, int b, int c)
+    {
+        tris.Add(a);
+        tris.Add(c);
+        tris.Add(b);
     }
 
     private bool PointInTriangle(Vector3 p, Vector3 a, Vector3 b, Vector3 c)

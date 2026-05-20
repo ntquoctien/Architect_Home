@@ -24,7 +24,8 @@ public class CameraController : MonoBehaviour
     public float maxPitch = 75f;
 
     [Header("Mouse Orbit (optional)")]
-    public bool enableRmbOrbit = true;
+    public bool enableLmbOrbit = true;
+    public bool enableRmbOrbit = false;
     public float mouseSensitivity = 3f;
 
     [Header("Zoom (Scroll)")]
@@ -32,6 +33,11 @@ public class CameraController : MonoBehaviour
     public float minDistance = 3f;
     public float maxDistance = 40f;
     public float zoomSmoothTime = 0.08f;
+
+    [Header("Vertical Look (Ctrl + Scroll)")]
+    public float verticalScrollSpeed = 3f;
+    public float minLookHeight = 0.2f;
+    public float maxLookHeight = 6f;
 
     [Header("Safe Distance (anti-enter room)")]
     [Tooltip("Khoảng đệm ngoài phòng (m). Tăng nếu camera hay sát tường.")]
@@ -82,7 +88,9 @@ public class CameraController : MonoBehaviour
     
     // Cache để detect floor bounds thay đổi
     private Vector3 lastFloorScale;
+    private Vector3 lastFloorBoundsSize;
     private float boundsCheckTimer;
+    private bool orbitInputBlocked;
     private const float BOUNDS_CHECK_INTERVAL = 0.2f; // check mỗi 0.2s
 
     void Start()
@@ -95,7 +103,11 @@ public class CameraController : MonoBehaviour
         }
 
         InitRoomBounds();
-        if (floorRenderer != null) lastFloorScale = floorRenderer.transform.localScale;
+        if (floorRenderer != null)
+        {
+            lastFloorScale = floorRenderer.transform.localScale;
+            lastFloorBoundsSize = floorRenderer.bounds.size;
+        }
 
         // Đăng ký callback khi tường thay đổi
         RegisterWallEditorCallback();
@@ -146,7 +158,7 @@ public class CameraController : MonoBehaviour
         if (ShouldBlockInput()) return;
 
         HandleKeyboardRotate();
-        if (enableRmbOrbit) HandleMouseOrbit();
+        if (enableLmbOrbit || enableRmbOrbit) HandleMouseOrbit();
         HandleZoom();
     }
 
@@ -170,9 +182,11 @@ public class CameraController : MonoBehaviour
         if (floorRenderer == null) return;
         
         Vector3 currentScale = floorRenderer.transform.localScale;
-        if (currentScale != lastFloorScale)
+        Vector3 currentBoundsSize = floorRenderer.bounds.size;
+        if (currentScale != lastFloorScale || currentBoundsSize != lastFloorBoundsSize)
         {
             lastFloorScale = currentScale;
+            lastFloorBoundsSize = currentBoundsSize;
             InitRoomBounds();
             
             // Reset cached safe distance để tính lại
@@ -194,6 +208,11 @@ public class CameraController : MonoBehaviour
     {
         InitRoomBounds();
         if (resnap) SnapToDefaultView();
+    }
+
+    public void SetOrbitInputBlocked(bool blocked)
+    {
+        orbitInputBlocked = blocked;
     }
 
     [ContextMenu("Snap To Default View")]
@@ -250,7 +269,10 @@ public class CameraController : MonoBehaviour
 
     private void HandleMouseOrbit()
     {
-        if (!Input.GetMouseButton(1)) return;
+        if (orbitInputBlocked) return;
+        bool lmbOrbit = enableLmbOrbit && Input.GetMouseButton(0);
+        bool rmbOrbit = enableRmbOrbit && Input.GetMouseButton(1);
+        if (!lmbOrbit && !rmbOrbit) return;
 
         float dx = Input.GetAxis("Mouse X") * mouseSensitivity;
         float dy = Input.GetAxis("Mouse Y") * mouseSensitivity;
@@ -268,6 +290,12 @@ public class CameraController : MonoBehaviour
     {
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) < 0.0001f) return;
+
+        if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+        {
+            lookHeight = Mathf.Clamp(lookHeight + scroll * verticalScrollSpeed, minLookHeight, maxLookHeight);
+            return;
+        }
 
         targetDistance -= scroll * zoomSpeed;
         targetDistance = Mathf.Clamp(targetDistance, minDistance, maxDistance);
@@ -391,6 +419,8 @@ public class CameraController : MonoBehaviour
         if (floorRenderer != null)
         {
             floorBounds = floorRenderer.bounds;
+            lastFloorScale = floorRenderer.transform.localScale;
+            lastFloorBoundsSize = floorRenderer.bounds.size;
             hasBounds = true;
         }
     }

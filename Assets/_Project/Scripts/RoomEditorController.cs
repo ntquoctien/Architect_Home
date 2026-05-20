@@ -33,6 +33,10 @@ public class RoomEditorController : MonoBehaviour
     [SerializeField] private RoomThemeController roomThemeController;
     [SerializeField] private CameraController    cameraController;
 
+    [Header("Camera Auto Setup")]
+    [SerializeField] private bool autoCreateCamera = true;
+    [SerializeField] private string cameraPivotName = "RoomCameraPivot";
+
     // ── Core references ────────────────────────────────────────────────────
     private RoomData            roomData;
     private RoomMeshGenerator   meshGenerator;
@@ -48,6 +52,7 @@ public class RoomEditorController : MonoBehaviour
     // ── State ──────────────────────────────────────────────────────────────
     private bool isInitialized = false;
     private Camera mainCamera;
+    private Transform cameraPivot;
 
     // ─────────────────────────────────────────────────────────────────────
     //  Unity lifecycle
@@ -147,10 +152,13 @@ public class RoomEditorController : MonoBehaviour
     private void InitializeRoom(float width, float length)
     {
         roomData = new RoomData(width, length, centerPosition: transform.position);
-        roomData.OnGeometryChanged += OnRoomGeometryChanged;
 
         measurementView.Initialize(roomData);
         meshGenerator.Initialize(roomData);
+        roomData.OnGeometryChanged += OnRoomGeometryChanged;
+        EnsureCameraSetup();
+        UpdateCameraPivot();
+        IntegrateWithExistingSystems();
 
         CreateAllNodeHandles();
         isInitialized = true;
@@ -182,6 +190,8 @@ public class RoomEditorController : MonoBehaviour
         selectedNode      = nodeHandles[index];
         selectedNodeIndex = index;
         isDraggingNode    = true;
+        if (cameraController != null)
+            cameraController.SetOrbitInputBlocked(true);
         selectedNode.SetState(NodeHandle.NodeState.Selected);
     }
 
@@ -228,6 +238,8 @@ public class RoomEditorController : MonoBehaviour
             selectedNodeIndex = -1;
         }
         isDraggingNode = false;
+        if (cameraController != null)
+            cameraController.SetOrbitInputBlocked(false);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -236,7 +248,70 @@ public class RoomEditorController : MonoBehaviour
 
     private void OnRoomGeometryChanged()
     {
+        UpdateCameraPivot();
         IntegrateWithExistingSystems();
+    }
+
+    private void EnsureCameraSetup()
+    {
+        if (cameraPivot == null)
+        {
+            Transform existingPivot = transform.Find(cameraPivotName);
+            if (existingPivot != null)
+            {
+                cameraPivot = existingPivot;
+            }
+            else
+            {
+                GameObject pivotGo = new GameObject(cameraPivotName);
+                pivotGo.transform.SetParent(transform);
+                pivotGo.transform.localPosition = Vector3.zero;
+                cameraPivot = pivotGo.transform;
+            }
+        }
+
+        if (cameraController == null)
+            cameraController = FindAnyObjectByType<CameraController>();
+
+        if (cameraController == null && autoCreateCamera)
+        {
+            Camera sceneCamera = Camera.main;
+            GameObject cameraGo = sceneCamera != null ? sceneCamera.gameObject : new GameObject("Main Camera");
+
+            if (sceneCamera == null)
+                sceneCamera = cameraGo.AddComponent<Camera>();
+
+            if (cameraGo.GetComponent<AudioListener>() == null)
+                cameraGo.AddComponent<AudioListener>();
+
+            cameraGo.tag = "MainCamera";
+            cameraController = cameraGo.GetComponent<CameraController>() ?? cameraGo.AddComponent<CameraController>();
+        }
+
+        if (cameraController == null) return;
+
+        cameraController.enabled = true;
+        cameraController.target = cameraPivot;
+        cameraController.floorRenderer = meshGenerator.GetFloorRenderer();
+        cameraController.SetOrbitInputBlocked(isDraggingNode);
+        cameraController.RebuildBoundsFromFloor(true);
+        mainCamera = Camera.main;
+    }
+
+    private void UpdateCameraPivot()
+    {
+        if (cameraPivot == null || roomData == null || roomData.Corners.Count == 0) return;
+
+        Vector3 min = roomData.Corners[0];
+        Vector3 max = roomData.Corners[0];
+        for (int i = 1; i < roomData.Corners.Count; i++)
+        {
+            min = Vector3.Min(min, roomData.Corners[i]);
+            max = Vector3.Max(max, roomData.Corners[i]);
+        }
+
+        Vector3 center = (min + max) * 0.5f;
+        cameraPivot.position = new Vector3(center.x, transform.position.y, center.z);
     }
 
     private void IntegrateWithExistingSystems()
@@ -295,6 +370,7 @@ public class RoomEditorController : MonoBehaviour
                     // Reactivate and reposition
                     nodeHandles[i].gameObject.SetActive(true);
                     nodeHandles[i].transform.position = roomData.Corners[i];
+                    SetHandleWorldSize(nodeHandles[i].transform);
                     nodeHandles[i].SetNodeIndex(i);
                 }
             }
@@ -335,9 +411,9 @@ public class RoomEditorController : MonoBehaviour
             go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             go.transform.SetParent(transform);
             go.transform.position   = roomData.Corners[index];
-            go.transform.localScale = Vector3.one * nodeHandleSize;
         }
         go.name = $"NodeHandle_{index}";
+        SetHandleWorldSize(go.transform);
 
         NodeHandle handle = go.GetComponent<NodeHandle>() ?? go.AddComponent<NodeHandle>();
         handle.Initialize(index, nodeNormalColor, nodeHoverColor, nodeSelectedColor);
@@ -347,6 +423,30 @@ public class RoomEditorController : MonoBehaviour
         handle.OnNodeDeleted += () => OnNodeDeleted(capturedIndex);
 
         return handle;
+    }
+
+    private void SetHandleWorldSize(Transform handleTransform)
+    {
+        float size = Mathf.Max(0.01f, nodeHandleSize);
+        Transform parent = handleTransform.parent;
+        if (parent == null)
+        {
+            handleTransform.localScale = Vector3.one * size;
+            return;
+        }
+
+        Vector3 parentScale = parent.lossyScale;
+        handleTransform.localScale = new Vector3(
+            SafeScale(size, parentScale.x),
+            SafeScale(size, parentScale.y),
+            SafeScale(size, parentScale.z)
+        );
+    }
+
+    private static float SafeScale(float worldSize, float parentAxisScale)
+    {
+        float axis = Mathf.Abs(parentAxisScale);
+        return axis > 0.0001f ? worldSize / axis : worldSize;
     }
 
     private List<NodeHandle> GetActiveHandles()

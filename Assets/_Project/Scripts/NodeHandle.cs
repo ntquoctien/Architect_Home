@@ -42,12 +42,13 @@ public class NodeHandle : MonoBehaviour
         hoverColor = hover;
         selectedColor = selected;
 
-        // Ensure there is a SphereCollider for WallInteraction raycasting
-        if (GetComponent<SphereCollider>() == null)
-        {
-            var sc = gameObject.AddComponent<SphereCollider>();
-            sc.radius = 0.15f;
-        }
+        // Ensure there is a SphereCollider for WallInteraction raycasting.
+        // Radius 0.5 matches Unity's default sphere mesh, so transform scale controls handle size.
+        var sphereCollider = GetComponent<SphereCollider>();
+        if (sphereCollider == null)
+            sphereCollider = gameObject.AddComponent<SphereCollider>();
+        sphereCollider.radius = 0.5f;
+        sphereCollider.center = Vector3.zero;
 
         nodeRenderer = GetComponent<Renderer>();
         if (nodeRenderer == null)
