@@ -31,6 +31,7 @@ public class NodeHandle : MonoBehaviour
     
     private Renderer nodeRenderer;
     private MaterialPropertyBlock propertyBlock;
+    private SphereCollider sphereCollider;
 
     /// <summary>
     /// Initializes the node handle with colors and index.
@@ -44,7 +45,7 @@ public class NodeHandle : MonoBehaviour
 
         // Ensure there is a SphereCollider for WallInteraction raycasting.
         // Radius 0.5 matches Unity's default sphere mesh, so transform scale controls handle size.
-        var sphereCollider = GetComponent<SphereCollider>();
+        sphereCollider = GetComponent<SphereCollider>();
         if (sphereCollider == null)
             sphereCollider = gameObject.AddComponent<SphereCollider>();
         sphereCollider.radius = 0.5f;
@@ -91,6 +92,7 @@ public class NodeHandle : MonoBehaviour
         // Use MaterialPropertyBlock to avoid creating material instances
         if (nodeRenderer != null)
         {
+            propertyBlock ??= new MaterialPropertyBlock();
             propertyBlock.SetColor("_Color", targetColor);
             nodeRenderer.SetPropertyBlock(propertyBlock);
         }
@@ -135,6 +137,24 @@ public class NodeHandle : MonoBehaviour
     public void SetNodeIndex(int index)
     {
         nodeIndex = index;
+    }
+
+    public void SetWorldClickRadius(float worldRadius)
+    {
+        if (sphereCollider == null)
+            sphereCollider = GetComponent<SphereCollider>();
+        if (sphereCollider == null) return;
+
+        float maxScale = Mathf.Max(
+            Mathf.Abs(transform.lossyScale.x),
+            Mathf.Abs(transform.lossyScale.y),
+            Mathf.Abs(transform.lossyScale.z)
+        );
+
+        sphereCollider.radius = maxScale > 0.0001f
+            ? Mathf.Max(0.01f, worldRadius) / maxScale
+            : Mathf.Max(0.01f, worldRadius);
+        sphereCollider.center = Vector3.zero;
     }
 
 #if UNITY_EDITOR

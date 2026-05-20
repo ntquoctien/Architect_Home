@@ -15,10 +15,13 @@ public class RoomEditorController : MonoBehaviour
     [Header("Initial Room Settings")]
     [SerializeField] private float initialWidth  = 5f;
     [SerializeField] private float initialLength = 5f;
+    [SerializeField] private float initialWallThickness = RoomMeshGenerator.DefaultWallThickness;
+    [SerializeField] private float initialFloorThickness = RoomMeshGenerator.DefaultFloorThickness;
 
     [Header("Node Settings")]
     [SerializeField] private GameObject nodeHandlePrefab;
-    [SerializeField] private float nodeHandleSize = 0.3f;
+    [SerializeField] private float nodeHandleSize = 0.12f;
+    [SerializeField] private float nodeHandleClickRadius = 0.28f;
     [SerializeField] private Color nodeNormalColor   = Color.green;
     [SerializeField] private Color nodeHoverColor    = Color.yellow;
     [SerializeField] private Color nodeSelectedColor = Color.cyan;
@@ -48,6 +51,10 @@ public class RoomEditorController : MonoBehaviour
     private NodeHandle selectedNode;
     private int  selectedNodeIndex = -1;
     private bool isDraggingNode    = false;
+    private bool isCreatingWallFromNode = false;
+    private int createdWallNodeIndex = -1;
+    private Vector3 createdWallStartPosition;
+    private const float CreateWallMinDragDistance = 0.05f;
 
     // ── State ──────────────────────────────────────────────────────────────
     private bool isInitialized = false;
@@ -72,8 +79,8 @@ public class RoomEditorController : MonoBehaviour
 
         // Subscribe to WallInteraction events (E1)
         wallInteraction.OnVertexClicked      += OnVertexClicked;
+        wallInteraction.OnVertexShiftClicked += OnVertexShiftClicked;
         wallInteraction.OnVertexRightClicked += OnVertexRightClicked;
-        wallInteraction.OnEdgeClicked        += OnEdgeClicked;
     }
 
     private void Start()
@@ -99,8 +106,8 @@ public class RoomEditorController : MonoBehaviour
         if (wallInteraction != null)
         {
             wallInteraction.OnVertexClicked      -= OnVertexClicked;
+            wallInteraction.OnVertexShiftClicked -= OnVertexShiftClicked;
             wallInteraction.OnVertexRightClicked -= OnVertexRightClicked;
-            wallInteraction.OnEdgeClicked        -= OnEdgeClicked;
         }
     }
 
@@ -145,13 +152,27 @@ public class RoomEditorController : MonoBehaviour
         roomData.SetRoomHeight(newHeight);
     }
 
+    public void SetWallThickness(float newThickness)
+    {
+        if (roomData == null || newThickness <= 0f) return;
+        roomData.SetWallThickness(newThickness);
+        if (cameraController != null)
+            cameraController.wallThicknessPadding = roomData.WallThickness;
+    }
+
+    public void SetFloorThickness(float newThickness)
+    {
+        if (roomData == null || newThickness <= 0f) return;
+        roomData.SetFloorThickness(newThickness);
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     //  Initialization
     // ─────────────────────────────────────────────────────────────────────
 
     private void InitializeRoom(float width, float length)
     {
-        roomData = new RoomData(width, length, centerPosition: transform.position);
+        roomData = new RoomData(width, length, wallThickness: initialWallThickness, floorThickness: initialFloorThickness, centerPosition: transform.position);
 
         measurementView.Initialize(roomData);
         meshGenerator.Initialize(roomData);
@@ -176,6 +197,8 @@ public class RoomEditorController : MonoBehaviour
         selectedNode      = null;
         selectedNodeIndex = -1;
         isDraggingNode    = false;
+        isCreatingWallFromNode = false;
+        createdWallNodeIndex = -1;
         isInitialized     = false;
     }
 
@@ -187,12 +210,23 @@ public class RoomEditorController : MonoBehaviour
     private void OnVertexClicked(int index)
     {
         if (index < 0 || index >= nodeHandles.Count) return;
-        selectedNode      = nodeHandles[index];
-        selectedNodeIndex = index;
-        isDraggingNode    = true;
-        if (cameraController != null)
-            cameraController.SetOrbitInputBlocked(true);
-        selectedNode.SetState(NodeHandle.NodeState.Selected);
+        BeginDragNode(index);
+    }
+
+    private void OnVertexShiftClicked(int index)
+    {
+        if (roomData == null || index < 0 || index >= roomData.Corners.Count) return;
+
+        createdWallStartPosition = roomData.Corners[index];
+        int insertIndex = index + 1;
+        roomData.InsertCorner(insertIndex, GetCreateWallSeedPosition(index));
+        SyncNodeHandles();
+
+        if (insertIndex >= nodeHandles.Count || nodeHandles[insertIndex] == null) return;
+
+        isCreatingWallFromNode = true;
+        createdWallNodeIndex = insertIndex;
+        BeginDragNode(insertIndex);
     }
 
     /// <summary>E4 — Show the RadialToolMenu at the right-clicked vertex.</summary>
@@ -201,14 +235,6 @@ public class RoomEditorController : MonoBehaviour
         if (roomData == null || index < 0 || index >= roomData.Corners.Count) return;
         if (radialToolMenu != null)
             radialToolMenu.Show(roomData.Corners[index], index);
-    }
-
-    /// <summary>E5 — Insert a new vertex on the clicked edge.</summary>
-    private void OnEdgeClicked(int edgeIndex, Vector3 hitPoint)
-    {
-        hitPoint.y = 0f;
-        roomData.InsertCorner(edgeIndex + 1, hitPoint);
-        SyncNodeHandles();  // E6
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -233,13 +259,52 @@ public class RoomEditorController : MonoBehaviour
     {
         if (isDraggingNode && selectedNode != null)
         {
+            if (isCreatingWallFromNode &&
+                createdWallNodeIndex >= 0 &&
+                createdWallNodeIndex < roomData.Corners.Count &&
+                Vector3.Distance(createdWallStartPosition, roomData.Corners[createdWallNodeIndex]) < CreateWallMinDragDistance)
+            {
+                roomData.RemoveCorner(createdWallNodeIndex);
+                SyncNodeHandles();
+            }
+
             selectedNode.SetState(NodeHandle.NodeState.Normal);
             selectedNode = null;
             selectedNodeIndex = -1;
         }
         isDraggingNode = false;
+        isCreatingWallFromNode = false;
+        createdWallNodeIndex = -1;
         if (cameraController != null)
             cameraController.SetOrbitInputBlocked(false);
+    }
+
+    private void BeginDragNode(int index)
+    {
+        if (index < 0 || index >= nodeHandles.Count) return;
+
+        selectedNode      = nodeHandles[index];
+        selectedNodeIndex = index;
+        isDraggingNode    = true;
+        if (cameraController != null)
+            cameraController.SetOrbitInputBlocked(true);
+        selectedNode.SetState(NodeHandle.NodeState.Selected);
+    }
+
+    private Vector3 GetCreateWallSeedPosition(int sourceIndex)
+    {
+        int count = roomData.Corners.Count;
+        Vector3 source = roomData.Corners[sourceIndex];
+        Vector3 next = roomData.Corners[(sourceIndex + 1) % count];
+        Vector3 direction = next - source;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude < 0.0001f)
+            direction = Vector3.right;
+        else
+            direction.Normalize();
+
+        return source + direction * CreateWallMinDragDistance;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -335,6 +400,7 @@ public class RoomEditorController : MonoBehaviour
             Renderer floorR = meshGenerator.GetFloorRenderer();
             if (floorR != null)
                 cameraController.floorRenderer = floorR;
+            cameraController.wallThicknessPadding = roomData != null ? roomData.WallThickness : initialWallThickness;
             cameraController.RebuildBoundsFromFloor(false);
         }
     }
@@ -371,6 +437,7 @@ public class RoomEditorController : MonoBehaviour
                     nodeHandles[i].gameObject.SetActive(true);
                     nodeHandles[i].transform.position = roomData.Corners[i];
                     SetHandleWorldSize(nodeHandles[i].transform);
+                    nodeHandles[i].SetWorldClickRadius(nodeHandleClickRadius);
                     nodeHandles[i].SetNodeIndex(i);
                 }
             }
@@ -417,6 +484,7 @@ public class RoomEditorController : MonoBehaviour
 
         NodeHandle handle = go.GetComponent<NodeHandle>() ?? go.AddComponent<NodeHandle>();
         handle.Initialize(index, nodeNormalColor, nodeHoverColor, nodeSelectedColor);
+        handle.SetWorldClickRadius(nodeHandleClickRadius);
 
         // Wire deletion (only from RadialMenu now, but kept for safety)
         int capturedIndex = index;
@@ -427,7 +495,7 @@ public class RoomEditorController : MonoBehaviour
 
     private void SetHandleWorldSize(Transform handleTransform)
     {
-        float size = Mathf.Max(0.01f, nodeHandleSize);
+        float size = Mathf.Clamp(nodeHandleSize, 0.01f, 0.12f);
         Transform parent = handleTransform.parent;
         if (parent == null)
         {

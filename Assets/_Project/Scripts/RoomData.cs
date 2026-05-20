@@ -14,6 +14,16 @@ public class RoomData
     public float RoomHeight { get; private set; }
 
     /// <summary>
+    /// Thickness of generated walls.
+    /// </summary>
+    public float WallThickness { get; private set; }
+
+    /// <summary>
+    /// Thickness of the generated floor slab.
+    /// </summary>
+    public float FloorThickness { get; private set; }
+
+    /// <summary>
     /// List of corner positions in world space (XZ plane, Y is typically 0).
     /// Points should be ordered in a counter-clockwise direction.
     /// </summary>
@@ -36,11 +46,15 @@ public class RoomData
     /// <param name="width">Width of the initial room</param>
     /// <param name="length">Length of the initial room</param>
     /// <param name="height">Height of the room (wall height)</param>
+    /// <param name="wallThickness">Thickness of generated walls</param>
+    /// <param name="floorThickness">Thickness of the generated floor slab</param>
     /// <param name="centerPosition">Center position of the room</param>
-    public RoomData(float width = 5f, float length = 5f, float height = 3f, Vector3 centerPosition = default)
+    public RoomData(float width = 5f, float length = 5f, float height = 3f, float wallThickness = 0.15f, float floorThickness = 0.12f, Vector3 centerPosition = default)
     {
         Corners = new List<Vector3>();
         RoomHeight = height;
+        WallThickness = Mathf.Max(0.01f, wallThickness);
+        FloorThickness = Mathf.Max(0.01f, floorThickness);
         InitializeRectangularRoom(width, length, centerPosition);
     }
 
@@ -176,6 +190,32 @@ public class RoomData
         if (Mathf.Approximately(RoomHeight, newHeight)) return;
 
         RoomHeight = newHeight;
+        OnGeometryChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Updates wall thickness and triggers wall regeneration.
+    /// </summary>
+    public void SetWallThickness(float newThickness)
+    {
+        newThickness = Mathf.Max(0.01f, newThickness);
+        if (Mathf.Approximately(WallThickness, newThickness)) return;
+
+        WallThickness = newThickness;
+        LastChangedCornerIndex = -1;
+        OnGeometryChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Updates floor thickness and triggers floor regeneration.
+    /// </summary>
+    public void SetFloorThickness(float newThickness)
+    {
+        newThickness = Mathf.Max(0.01f, newThickness);
+        if (Mathf.Approximately(FloorThickness, newThickness)) return;
+
+        FloorThickness = newThickness;
+        LastChangedCornerIndex = -1;
         OnGeometryChanged?.Invoke();
     }
 

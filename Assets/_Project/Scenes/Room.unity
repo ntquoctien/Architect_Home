@@ -1095,12 +1095,14 @@ MonoBehaviour:
   pitchSpeed: 90
   minPitch: 10
   maxPitch: 80
+  enableLmbOrbit: 1
   enableRmbOrbit: 1
   mouseSensitivity: 3
   zoomSpeed: 10
   minDistance: 3
   maxDistance: 20
   zoomSmoothTime: 0.08
+  ctrlPitchScrollSpeed: 120
   outsidePadding: 0.8
   wallThicknessPadding: 0.1
   smoothRotation: 1
@@ -6200,10 +6202,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8e42e9b04a40d340857a4c7eeae221d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoomEditorController
-  initialWidth: 5
-  initialLength: 5
+  initialWidth: 7
+  initialLength: 8
+  initialWallThickness: 0.2
+  initialFloorThickness: 0.2
   nodeHandlePrefab: {fileID: 9120236560821832456, guid: 5a9fad536daca0a41a0b63f7d13964af, type: 3}
-  nodeHandleSize: 0.3
+  nodeHandleSize: 0.1
+  nodeHandleClickRadius: 0.28
   nodeNormalColor: {r: 0, g: 1, b: 0, a: 1}
   nodeHoverColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   nodeSelectedColor: {r: 0, g: 1, b: 1, a: 1}
@@ -6213,6 +6218,8 @@ MonoBehaviour:
     m_Bits: 2048
   roomThemeController: {fileID: 1268377618}
   cameraController: {fileID: 272362077}
+  autoCreateCamera: 1
+  cameraPivotName: RoomCameraPivot
 --- !u!114 &1268377620
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6245,6 +6252,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoomMeasurementView
   showMeasurements: 1
+  renderMeasurementLabels: 0
   heightOffset: 1.5
   wallOffset: 0.3
   measurementUnit: m
@@ -6271,6 +6279,14 @@ MonoBehaviour:
   uvScale: 1
   defaultFloorMat: {fileID: 0}
   defaultWallMat: {fileID: 0}
+  showWallBorders: 1
+  wallBorderWidth: 0.035
+  wallBorderOutset: 0.004
+  wallBorderColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
+  autoHideFrontWalls: 1
+  visibilityCamera: {fileID: 0}
+  frontWallHideDotThreshold: 0.15
+  debugWallVisibility: 0
 --- !u!4 &1268377623
 Transform:
   m_ObjectHideFlags: 0

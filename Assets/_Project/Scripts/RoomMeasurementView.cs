@@ -11,6 +11,7 @@ public class RoomMeasurementView : MonoBehaviour
 {
     [Header("Measurement Settings")]
     [SerializeField] private bool showMeasurements = true;
+    [SerializeField] private bool renderMeasurementLabels = false;
     [Tooltip("Height above ground for measurement labels (eye level)")]
     [SerializeField] private float heightOffset = 1.5f;
     [Tooltip("Offset from wall center (positive = outward from room center)")]
@@ -106,7 +107,7 @@ public class RoomMeasurementView : MonoBehaviour
     /// </summary>
     private void UpdateMeasurements()
     {
-        if (!showMeasurements || roomData == null)
+        if (!showMeasurements || !renderMeasurementLabels || roomData == null)
         {
             HideAllMeasurements();
             return;

@@ -34,10 +34,8 @@ public class CameraController : MonoBehaviour
     public float maxDistance = 40f;
     public float zoomSmoothTime = 0.08f;
 
-    [Header("Vertical Look (Ctrl + Scroll)")]
-    public float verticalScrollSpeed = 3f;
-    public float minLookHeight = 0.2f;
-    public float maxLookHeight = 6f;
+    [Header("Ctrl Orbit")]
+    public float ctrlPitchScrollSpeed = 120f;
 
     [Header("Safe Distance (anti-enter room)")]
     [Tooltip("Khoảng đệm ngoài phòng (m). Tăng nếu camera hay sát tường.")]
@@ -270,6 +268,7 @@ public class CameraController : MonoBehaviour
     private void HandleMouseOrbit()
     {
         if (orbitInputBlocked) return;
+        bool ctrlHeld = IsControlHeld();
         bool lmbOrbit = enableLmbOrbit && Input.GetMouseButton(0);
         bool rmbOrbit = enableRmbOrbit && Input.GetMouseButton(1);
         if (!lmbOrbit && !rmbOrbit) return;
@@ -281,8 +280,15 @@ public class CameraController : MonoBehaviour
         if (Mathf.Abs(dy) < 0.0005f) dy = 0f;
         if (dx == 0f && dy == 0f) return;
 
-        targetYaw += dx;
-        targetPitch -= dy;
+        if (ctrlHeld && lmbOrbit)
+        {
+            targetPitch -= dy;
+        }
+        else
+        {
+            targetYaw += dx;
+            targetPitch -= dy;
+        }
         targetPitch = Mathf.Clamp(targetPitch, minPitch, maxPitch);
     }
 
@@ -291,9 +297,9 @@ public class CameraController : MonoBehaviour
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) < 0.0001f) return;
 
-        if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+        if (IsControlHeld())
         {
-            lookHeight = Mathf.Clamp(lookHeight + scroll * verticalScrollSpeed, minLookHeight, maxLookHeight);
+            targetPitch = Mathf.Clamp(targetPitch + scroll * ctrlPitchScrollSpeed, minPitch, maxPitch);
             return;
         }
 
@@ -447,5 +453,10 @@ public class CameraController : MonoBehaviour
         cachedSafeDistance = CalculateSafeDistance(targetPitch);
         lastPitchForSafe = targetPitch;
         targetDistance = currentDistance = Mathf.Max(targetDistance, cachedSafeDistance);
+    }
+
+    private static bool IsControlHeld()
+    {
+        return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
     }
 }
